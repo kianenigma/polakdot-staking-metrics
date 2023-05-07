@@ -106,8 +106,9 @@ async function main() {
 
 	// 1. General staking metrics
 	const currentEra = (await api.query.staking.currentEra()).unwrap();
-	const [ledgersEntries, exposures] = await Promise.all([
+	const [ledgersEntries, payees, exposures] = await Promise.all([
 		api.query.staking.ledger.entries(),
+		api.query.staking.payee.entries(),
 		api.query.staking.erasStakers.entries(currentEra)
 	]);
 	const ledgers = ledgersEntries.map(([_, l]) => l.unwrap());
@@ -121,10 +122,29 @@ async function main() {
 	console.log(`staking_validatorCount: ${await api.query.staking.counterForValidators()}`);
 	// Count of all accounts staked. These accounts have not declared intention to validate and/or nomiante.
 	console.log(`staking_stakedAccountCount: ${ledgers.length}`);
+	// Of `staking_stakedAccountCount`, what percentage of them are compounding their rewards?
+	console.log(
+		`staking_stakedAccountRewardCompounding: ${payees.filter((p) => p[1].isStaked).length}`
+	);
+	// Of `staking_stakedAccountCount`, what percentage of them are forwarding their rewards to their stash, but not compounding?
+	console.log(`staking_stakedAccountRewardToStash: ${payees.filter((p) => p[1].isStash).length}`);
+	// Of `staking_stakedAccountCount`, what percentage of them are forwarding their rewards to their controller?
+	console.log(
+		`staking_stakedAccountRewardToController: ${payees.filter((p) => p[1].isController).length}`
+	);
+	// Of `staking_stakedAccountCount`, what percentage of them are forwarding their rewards to other accounts?
+	console.log(
+		`staking_stakedAccountRewardToAccount: ${payees.filter((p) => p[1].isAccount).length}`
+	);
 
-	const stakingStaked = await api.query.staking.erasTotalStake(currentEra);
-	// Total number of tokens staked.
+	// Total number of tokens staked in general, including those who are chill and are backing inactive validators.
+	const stakingStaked = sum(ledgers.map((l) => l.total.toBn()));
 	console.log(`staking_staked ${b(stakingStaked)}`);
+	// Total number of tokens actively staked, meaning they are backing active validators.
+	const stakingActiveStaked = await api.query.staking.erasTotalStake(currentEra);
+	console.log(`staking_active_staked ${b(stakingActiveStaked)}`);
+	// Total number of tokens that are staked but are not really being used effectively.
+	console.log(`staking_ineffective_staked ${b(stakingStaked.sub(stakingActiveStaked))}`);
 
 	// TODO: will come into motion once goes into production: https://github.com/paritytech/substrate/pull/12889/files
 	// Minimum active/rewardable stake for nominators.
