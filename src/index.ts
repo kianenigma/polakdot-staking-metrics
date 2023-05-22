@@ -137,7 +137,7 @@ async function main() {
 		`staking_stakedAccountRewardToAccount: ${payees.filter((p) => p[1].isAccount).length}`
 	);
 
-	// Total number of tokens staked in general, including those who are chill and are backing inactive validators.
+	// Total number of tokens staked in general, including those who are chill and are backing inactive validators, and even those that are unbonding.
 	const stakingStaked = sum(ledgers.map((l) => l.total.toBn()));
 	console.log(`staking_staked ${b(stakingStaked)}`);
 	// Total number of tokens actively staked, meaning they are backing active validators.
